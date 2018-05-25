@@ -4,5 +4,5 @@ Display the latency/delay to an internet node (e.g. Google) on a 7-segment displ
 
   ## Project structure:
 
-    * Documentation
+    *Documentation
       Datasheets for TM1637, SDK documentation for the ESP8266 
