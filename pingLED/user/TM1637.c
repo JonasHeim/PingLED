@@ -2,6 +2,20 @@
 
 uint8_t tm1637_brightness = 0; /* display off */
 
+tm1637_char_t char_numbers0_9[10] =
+{
+    CHAR_0,
+    CHAR_1,
+    CHAR_2,
+    CHAR_3,
+    CHAR_4,
+    CHAR_5,
+    CHAR_6,
+    CHAR_7,
+    CHAR_8,
+    CHAR_9,
+};
+
 /*
  * Initialize TM1637
  */
@@ -81,14 +95,30 @@ void tm1637_display_number(int16_t _number)
             /* char in POS_0 is always '-' to indicate negative number */
 			tm1637_display_char(tm1637_map_char('-'), POS_0);
 
+            //ToDo
+            //display first digit
+
+            //display second digit
+
+            //display third digit
+
         }
         else
         {
             /* positive number */
-            if(0==(_number / 1000))
-            {
-                /* smaller than 1000 */
-            }
+            
+            //display first digit
+            tm1637_display_char(char_numbers0_9[_number % 10], POS_3);
+
+            //display second digit
+            tm1637_display_char(char_numbers0_9[(_number % 100) / 10], POS_2);
+
+            //display third digit
+            tm1637_display_char(char_numbers0_9[(_number % 1000) / 100], POS_1);
+
+            //display fourth digit
+            tm1637_display_char(char_numbers0_9[_number / 1000], POS_0);
+
         }
     }
 }
@@ -162,6 +192,15 @@ tm1637_char_t tm1637_map_char(unsigned char _char)
         case INPUT_CHAR_F:
             retVal = CHAR_F;
             break; 
+        case INPUT_CHAR_R:
+            retVal = CHAR_R;
+            break;
+        case INPUT_CHAR_S:
+            retVal = CHAR_S;
+            break;
+        case INPUT_CHAR_T:
+            retVal = CHAR_T;
+            break;
         case INPUT_CHAR_DASH:
             retVal = CHAR_DASH;
             break;

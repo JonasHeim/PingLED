@@ -39,7 +39,7 @@
  *    A      B      C      D      E      F      G      DP
  */
 #define CHAR_0              (0xFC)
-#define CHAR_1              (0x0C)
+#define CHAR_1              (0x60)
 #define CHAR_2              (0xDA)
 #define CHAR_3              (0xF2)
 #define CHAR_4              (0x66)
@@ -55,6 +55,9 @@
 #define CHAR_D              (0x7A)
 #define CHAR_E              (0x9E)
 #define CHAR_F              (0x8E)
+#define CHAR_R              (0x0A)
+#define CHAR_S              CHAR_5
+#define CHAR_T              (0x0E)
 
 #define CHAR_BLANK          (0x00)
 #define CHAR_DASH           (0x02)
@@ -79,6 +82,9 @@
 #define INPUT_CHAR_D        (char)('D')
 #define INPUT_CHAR_E        (char)('E')
 #define INPUT_CHAR_F        (char)('F')
+#define INPUT_CHAR_R        (char)('R')
+#define INPUT_CHAR_S        (char)('S')
+#define INPUT_CHAR_T        (char)('T')
 
 #define INPUT_CHAR_BLANK    (char)(' ')
 #define INPUT_CHAR_DASH     (char)('-')

@@ -25,6 +25,10 @@
 #include "esp_common.h"
 #include "gpio.h"
 #include "i2c_master.h"
+#include "esp_common.h"
+#include "gpio.h"
+#include "lwip/api.h"
+#include "lwip/icmp.h"
 #include "TM1637.h"
 #include "TM1637.h"
 
@@ -34,6 +38,8 @@
 /* WI-FI configuration */
 #define ACCESS_POINT_SSID		( "pingLED")
 #define ACCESS_POINT_PASSKEY	( "password")
+
+xQueueHandle display_queue_handle;
 
 /******************************************************************************
  * FunctionName : wifi_handle_event_cb
@@ -127,61 +133,23 @@ void task_display(void *pvParameters)
 	tm1637_init();
 	tm1637_set_brightness(0x50);
 	uint8_t i = 0;
-	while (1) { 
-		/* run display test pattern */
-		for(i = 0; i < 4; i++)
+
+	portBASE_TYPE xStatus;
+	int16_t queue_value;
+
+	while (1)
+	{ 
+
+		xStatus = xQueueReceive(display_queue_handle, &queue_value, 0);
+		if(pdTRUE == xStatus)
 		{
-
-			tm1637_display_char(tm1637_map_char('0'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('1'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('2'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('3'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('4'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('5'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('6'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('7'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('8'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('9'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('A'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('B'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('C'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('D'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('E'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_display_char(tm1637_map_char('F'), i);
-			vTaskDelay(WAIT_MS_DISPLAY_TEST / portTICK_RATE_MS);
-
-			tm1637_clear();
+			printf("Received something from queue: %d\r\n", queue_value);
+			//received something from the queue, display value
+			tm1637_display_number(queue_value);
 		}
+
+		vTaskDelay(10);
+
 	} 
 	vTaskDelete(NULL); 
 }
@@ -259,6 +227,12 @@ void task_reset(void *pvParameters)
 				break;
 			case RESET_STATE_TRIGGERED:
 				printf("Reset was triggered...\r\n");
+
+				tm1637_clear();
+				tm1637_display_char(tm1637_map_char('r'), POS_0);
+				tm1637_display_char(tm1637_map_char('s'), POS_0);
+				tm1637_display_char(tm1637_map_char('t'), POS_0);
+
 				vTaskDelay(5000 / portTICK_RATE_MS);	/* wait 5s */
 				
 				/* reset */
@@ -292,6 +266,7 @@ void task_wireless(void *pvParameters)
     uint8 ssid_hidden;      /**< Broadcast SSID or not, default 0, broadcast the SSID */
     uint8 max_connection;   /**< Max number of stations allowed to connect in, default 4, max 4 */
     uint16 beacon_interval; /**< Beacon interval, 100 ~ 60000 ms, default 100 */
+	int16_t display_queue_element = 0;
 
 	static struct softap_config config_ap = 
 	{
@@ -327,8 +302,6 @@ void task_wireless(void *pvParameters)
 		vTaskDelete(NULL); 
 	}
 
-	printf("##### 0 #####\r\n");
-
 	if(!wifi_softap_set_config(&config_ap))
 	{
 		/* could not set station configuration */
@@ -336,20 +309,15 @@ void task_wireless(void *pvParameters)
 		vTaskDelete(NULL); 
 	}
 
-	printf("##### 1 #####\r\n");
-
 	/* set access point IP and DHCP configuration */
 	if(wifi_softap_dhcps_stop())
 	{
-		printf("##### 2 #####\r\n");
 		if(!wifi_set_ip_info(SOFTAP_IF, &ip_ap))
 		{
 			/* could not set station ip configuration */
 			printf("Error in %s - Could not set access point ip configuration!\r\n", __func__);
 			vTaskDelete(NULL); 
 		}
-
-		printf("##### 3 #####\r\n");
 
 		if(!wifi_softap_set_dhcps_lease(&dhcp_ap))
 		{
@@ -358,16 +326,12 @@ void task_wireless(void *pvParameters)
 			vTaskDelete(NULL); 
 		}
 
-		printf("##### 4 #####\r\n");
- 
 		if(!wifi_softap_dhcps_start())
 		{
 			/* could not start access point DHCP */
 			printf("Error in %s - Could not start access point DHCP!\r\n", __func__);
 			vTaskDelete(NULL); 
 		}
-
-		printf("##### 5 #####\r\n");
 	}
 	else
 	{
@@ -384,6 +348,87 @@ void task_wireless(void *pvParameters)
 		vTaskDelete(NULL); 
 	}
 
+	    struct netconn *client = NULL;
+    struct netconn *nc = netconn_new(NETCONN_TCP);
+    if (nc == NULL) {
+        printf("Failed to allocate socket.\n");
+        vTaskDelete(NULL);
+    }
+    netconn_bind(nc, IP_ADDR_ANY, 80);
+    netconn_listen(nc);
+    char buf[512];
+    const char *webpage = {
+        "HTTP/1.1 200 OK\r\n"
+        "Content-type: text/html\r\n\r\n"
+        "<html><head><title>HTTP Server</title>"
+        "<style> div.main {"
+        "font-family: Arial;"
+        "padding: 0.01em 16px;"
+        "box-shadow: 2px 2px 1px 1px #d2d2d2;"
+        "background-color: #f1f1f1;}"
+        "</style></head>"
+        "<body><div class='main'>"
+        "<h3>LED control</h3>"
+        "<p>URL: %s</p>"
+        "<p>Uptime: %d seconds</p>"
+        "<p>Free heap: %d bytes</p>"
+        "<button onclick=\"location.href='/on'\" type='button'>"
+        "LED On</button></p>"
+        "<button onclick=\"location.href='/off'\" type='button'>"
+        "LED Off</button></p>"
+        "</div></body></html>"
+    };
+
+    while (1) {
+        err_t err = netconn_accept(nc, &client);
+        if (err == ERR_OK) {
+            struct netbuf *nb;
+            if ((err = netconn_recv(client, &nb)) == ERR_OK) {
+                void *data;
+                u16_t len;
+                netbuf_data(nb, &data, &len);
+                /* check for a GET request */
+                if (!strncmp(data, "GET ", 4)) {
+                    char uri[16];
+                    const int max_uri_len = 16;
+                    char *sp1, *sp2;
+                    /* extract URI */
+                    sp1 = (char*)((char*)data + 4);
+                    sp2 = memchr(sp1, ' ', max_uri_len);
+                    int len = sp2 - sp1;
+                    memcpy(uri, sp1, len);
+                    uri[len] = '\0';
+                    printf("uri: %s\n", uri);
+                    if (!strncmp(uri, "/on", max_uri_len))
+					{
+                        printf("ON\r\n”");
+
+						//Write "1234" to display queue
+						display_queue_element = 1234;
+						xQueueSendToFront(display_queue_handle, (const void*) &display_queue_element, 0);
+					}
+                    else if (!strncmp(uri, "/off", max_uri_len))
+					{
+                        printf("OFF\r\n”");
+						//Write "9876" to display queue
+
+						display_queue_element = 9876;
+						xQueueSendToFront(display_queue_handle, (const void*) &display_queue_element, 0);
+					}
+                    snprintf(buf, sizeof(buf), webpage,
+                            uri,
+                            xTaskGetTickCount() * portTICK_RATE_MS / 1000,
+                            (int) xPortGetFreeHeapSize());
+                    netconn_write(client, buf, strlen(buf), NETCONN_COPY);
+                }
+            }
+            netbuf_delete(nb);
+        }
+        printf("Closing connection\n");-
+        netconn_close(client);
+        netconn_delete(client);
+    }
+
 	vTaskDelete(NULL); 
 }
 
@@ -396,11 +441,26 @@ void task_wireless(void *pvParameters)
 void ICACHE_FLASH_ATTR
 user_init(void)
 {
+
+	/* config GPIO for user LED */
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13);
+	GPIO_OUTPUT_SET(13, 0);	//initial LED off
+
 	uart_init_new();
 	os_delay_us(10000);
 	printf("SDK version:%s\n", system_get_sdk_version());
-	xTaskCreate(task_display, "Seven Segment Display Task", 256, NULL, 2, NULL); 
-    xTaskCreate(task_reset, "Reset Task", 256, NULL, 2, NULL);
-	xTaskCreate(task_wireless, "Wi-Fi Management Task", 512, NULL, 2, NULL);
+
+	//Create queue for task communication - Display
+	display_queue_handle = xQueueCreate(5, sizeof(int16_t));
+	if(NULL == display_queue_handle)
+	{
+		printf("Error - Could not create display queue!\r\n");
+	}
+	else
+	{
+		xTaskCreate(task_display, "Seven Segment Display Task", 256, NULL, 2, NULL); 
+		xTaskCreate(task_reset, "Reset Task", 256, NULL, 2, NULL);
+		xTaskCreate(task_wireless, "Wi-Fi Management Task", 512, NULL, 2, NULL);	
+	}
 }
 

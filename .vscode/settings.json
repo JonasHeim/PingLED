@@ -1,0 +1,9 @@
+{
+	"files.associations": {
+		"tm1637.h": "c",
+		"esp_common.h": "c",
+		"esp8266.h": "c",
+		"gpio_register.h": "c",
+		"icmp.h": "c"
+	}
+}
